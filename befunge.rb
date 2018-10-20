@@ -143,7 +143,18 @@ class Befunge
   end
 end
 
-bf = Befunge.new(File.read(ARGV[0]))
-trap("SIGINT") do print_debug end
+def show_usage
+  puts "USAGE: ruby befunge.rb <filename>"
+end
 
-bf.run
+
+if (ARGV.length == 0) or !File.file?(ARGV[0]) then show_usage; exit end
+
+bf = Befunge.new(File.read(ARGV[0]))
+trap("SIGINT") do bf.print_debug end
+begin
+  bf.run
+rescue => e
+  puts e
+  print_debug
+end
