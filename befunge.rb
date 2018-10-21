@@ -1,109 +1,101 @@
 class Befunge
 
+  CODE_DIRS = {
+    right: {x: 1, y: 0},
+    left: {x: -1, y: 0},
+    down: {x: 0, y: 1},
+    up: {x: 0, y: -1}
+  }
+
   def initialize(code)
     @playfield = build_field(code)    # convert the program into a 2d array
     @stack = []                       # the stack
-    @dflow = ">"                      # direction flow of the program.
-    @current_inst = [0, 0]            # (x, y) of current instruction
-    @string_mode = false              # string mode toggle
+
+    @code_ptr = {x: 0, y: 0}          # (x, y) of current instruction
+    @code_dir = CODE_DIRS[:right]     # direction flow of the program.
   end
 
   def run
-    while @playfield[@current_inst[0], @current_inst[1]] != "@"
-      inst = intify @playfield[@current_inst[0]][@current_inst[1]] # magic
-      #puts "inst is a #{inst.class}"
+    loop do
+      inst = @playfield[@code_ptr[:y]][@code_ptr[:x]] # x and y inversion
+      
+      if ('0'..'9').include? inst
+        @stack.push(inst.to_i)
 
-      if inst == '"'
-        @string_mode = !@string_mode
-      elsif @string_mode
-        @stack.push(inst.ord)
-
-      elsif inst.is_a? Integer
-        @stack.push(inst)
-
-      elsif ['>', '<', '^', 'v'].include? inst
-        @dflow = inst
-
-      elsif ['+', '-', '*', '/'].include? inst
+      elsif ['+', '-', '/', '*', '%', '`'].include? inst
         a = @stack.pop
         b = @stack.pop
-        
-        case inst
-        when '+' then @stack.push(b+a)
-        when '-' then @stack.push(b-a)
-        when '*' then @stack.push(b*a)
-        when '/' then @stack.push(b/a)
-        when '%' then @stack.push(b%a)
-        end
 
-      elsif [',', '.'].include? inst
-        a = @stack.pop
-
-        case inst
-        when ',' then print a.chr
-        when '.' then print a
-        end
-
-      elsif ['_', '|'].include? inst
-        a = @stack.pop
-
-        case inst
-        when '_' then if a == 0 then @dflow = '>' else @dflow = '<' end
-        when '|' then if a == 0 then @dflow = 'v' else @dflow = '^' end
-        end
+        @stack.push(
+          case inst
+          when '+' then b+a
+          when '-' then b-a
+          when '*' then b*a
+          when '/' then b/a
+          when '%' then b%a
+          when '`' then b>a ? 1 : 0
+          end 
+        )
       
-      elsif ['@', '#'].include? inst
-        case inst
-        when '#'
-          case @dflow
-          when '>' then go_right
-          when '<' then go_left
-          when 'v' then go_down
-          when '^' then go_up
-          end
-        when '@'
-          return
-        end
-
-      elsif [':', "\\"]
-        a = @stack.pop
-
-        case inst
-        when ':' then 2.times { @stack.push(a) }
-        when "\\"
-          b = @stack.pop
-          @stack.push(a)
-          @stack.push(b)
-        end
-
       elsif ['p', 'g'].include? inst
         y = @stack.pop
         x = @stack.pop
 
+        # x and y inversion (again)
         case inst
-        when 'p'
-        when 'g'
+        when 'p' then @playfield[y][x] = @stack.pop.chr
+        when 'g' then @stack.push @playfield[y][x].ord
         end
-      end
 
-      case @dflow
-      when '>' then go_right
-      when '<' then go_left
-      when 'v' then go_down
-      when '^' then go_up
-      end
+      elsif ['!', ',', '.', '$'].include? inst
+        a = @stack.pop
 
+        case inst
+        when '!' then @stack.push a == 0 ? 1 : 0
+        when '.' then print a
+        when ',' then print a.chr
+        end
+
+      elsif ['>', '<', '^', 'v', '?', '_', '|'].include? inst
+        @code_dir = case inst
+        when '>' then CODE_DIRS[:right]
+        when '<' then CODE_DIRS[:left]
+        when '^' then CODE_DIRS[:up]
+        when 'v' then CODE_DIRS[:down]
+        when '_' then @stack.pop == 0 ? CODE_DIRS[:right] : CODE_DIRS[:left]
+        when '|' then @stack.pop == 0 ? CODE_DIRS[:down] : CODE_DIRS[:up]
+        when '?' then CODE_DIRS.sample
+        end
+
+      elsif inst == '"'
+        move_ptr # skip the first quote
+
+        loop do
+          inst = @playfield[@code_ptr[:y]][@code_ptr[:x]]
+          break if inst == '"'
+          @stack.push(inst.ord)
+          move_ptr
+        end
+
+      elsif inst == '#'
+        move_ptr
+
+      elsif inst == ':'
+        @stack.push(@stack.empty? ? 0 : @stack.last)
+
+      elsif inst == "\\"
+        if @stack.size == 1
+          @stack.push 0
+        else
+          @stack[-1], @stack[-2] = @stack[-2], @stack[-1]
+        end
+
+      elsif inst == '@'
+        break
+      end
+      
+      move_ptr
     end
-  end
-
-  def print_debug()
-    print "PLAYFIELD:"
-    p @playfield
-    print "STACK: "
-    p @stack
-    puts "LAST EXECUTED: #{@playfield[@current_inst[0]][@current_inst[1]]}"
-    puts ""
-    exit
   end
 
   private
@@ -112,35 +104,11 @@ class Befunge
     code.split("\n").map(&:chars)
   end
 
-  def intify(val) # TODO: There must be a better way to do this
-    return 0 if val == "0"
-    if val.to_i != 0
-      return val.to_i
-    end
-    return val
+  def move_ptr()
+    @code_ptr[:x] += @code_dir[:x]
+    @code_ptr[:y] += @code_dir[:y]
   end
 
-  # functions for code flow
-
-  def go_right
-    @current_inst[1] += 1
-  end
-
-  def go_left
-    @current_inst[1] -= 1
-  end
-
-  def go_up
-    @current_inst[0] -= 1
-  end
-
-  def go_down
-    @current_inst[0] += 1
-  end
-
-  def go_random
-    raise "Not implemented yet"
-  end
 end
 
 def show_usage
@@ -150,11 +118,6 @@ end
 
 if (ARGV.length == 0) or !File.file?(ARGV[0]) then show_usage; exit end
 
-bf = Befunge.new(File.read(ARGV[0]))
-trap("SIGINT") do bf.print_debug end
-begin
-  bf.run
-rescue => e
-  puts e
-  print_debug
-end
+trap("SIGINT") do exit end
+
+Befunge.new(File.read(ARGV[0])).run
