@@ -18,6 +18,7 @@ $ ruby befunge.rb <filename>
 2. A quine: `quine.bf`
 3. A direction checker: `flowcheck.bf`
 4. A less or more game that allows you to cheat `less_or_more.bf`
+5. A factorial program: `factorial.bf`
 
 ## Instruction Set
 <table>
