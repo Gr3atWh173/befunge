@@ -57,8 +57,7 @@ class Befunge
         end
 
       elsif ['&', '~'].include? inst
-        a = gets.chomp
-        @stack.push inst == '&' ? gets.chomp.to_i : gets.chomp.ord
+        @stack.push inst == '&' ? STDIN.gets.chomp.to_i : STDIN.gets.chomp.ord
 
       elsif ['>', '<', '^', 'v', '?', '_', '|'].include? inst
         @code_dir = case inst
@@ -68,7 +67,7 @@ class Befunge
         when 'v' then CODE_DIRS[:down]
         when '_' then @stack.pop == 0 ? CODE_DIRS[:right] : CODE_DIRS[:left]
         when '|' then @stack.pop == 0 ? CODE_DIRS[:down] : CODE_DIRS[:up]
-        when '?' then CODE_DIRS.sample
+        when '?' then CODE_DIRS[CODE_DIRS.keys.sample]
         end
 
       elsif inst == '"'
