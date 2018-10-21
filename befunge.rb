@@ -56,6 +56,10 @@ class Befunge
         when ',' then print a.chr
         end
 
+      elsif ['&', '~'].include? inst
+        a = gets.chomp
+        @stack.push inst == '&' ? gets.chomp.to_i : gets.chomp.ord
+
       elsif ['>', '<', '^', 'v', '?', '_', '|'].include? inst
         @code_dir = case inst
         when '>' then CODE_DIRS[:right]
